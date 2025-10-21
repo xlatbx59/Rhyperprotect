@@ -1,0 +1,3 @@
+[submodule "dep/zydis"]
+	path = dep/zydis
+	url = https://github.com/zyantific/zydis.git

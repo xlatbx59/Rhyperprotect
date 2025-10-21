@@ -1,0 +1,7 @@
+release/*
+debug/*
+src/FileFormat
+src/obfuscation/ir.hpp
+src/obfuscation/vm
+test
+test.cpp
