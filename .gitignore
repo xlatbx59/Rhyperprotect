@@ -1,7 +1,8 @@
 release/*
 debug/*
-src/FileFormat
+src/file_formats
 src/obfuscation/ir.hpp
 src/obfuscation/vm
+src/cryptography
 test
 test.cpp

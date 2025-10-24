@@ -6,193 +6,10 @@
 #include <string.h>
 #include "code_analysis/code_analysis.hpp"
 #include "obfuscation/obfuscation.hpp"
-#include <unordered_map>
 
 #define ZeroMemory(dst, size) memset(dst, 0, size)
 
 using std::ofstream;
-
-struct SymbolEntry
-{
-  int64_t pc;
-  uint64_t label;
-};
-
-inline static uint8_t* assemble_1st_pass( const ZydisMachineMode machine_mode,
-                                          vector<SymbolEntry>& symbol_table,
-                                          vector<SymbolEntry>& ref_table,
-                                          const BasicBlock& bb,
-                                          uint64_t& out_size,
-                                          int64_t& pc)
-{
-  uint64_t available_space = bb.size() * 16;
-  uint8_t* output = nullptr, *temp = new uint8_t[available_space];
-  ZydisEncoderRequest req;
-  SymbolEntry symbol_entry;
-  SymbolEntry ref_entry;
-  ZydisDecodedOperand operand;
-  bool flag = false;
-  int64_t init_size = pc;
-  ZeroMemory(temp, sizeof(available_space));
-
-  for(Instruction inst : bb.insts)
-  {
-    ZeroMemory(&req, sizeof(ZydisEncoderRequest));
-    req.machine_mode = machine_mode;
-    req.branch_width = ZYDIS_BRANCH_WIDTH_NONE;
-
-    symbol_entry.pc = pc;
-    symbol_entry.label = inst.label;
-    symbol_table.push_back(symbol_entry);
-
-    req.mnemonic = inst.get_mnemonic();
-    req.operand_count = inst.get_operand_count();
-    for(int i = 0; i < req.operand_count; i++)
-    {
-      inst.get_operand(operand, i);
-      switch(operand.type)
-      {
-        case ZYDIS_OPERAND_TYPE_REGISTER:
-          req.operands[i].type = ZYDIS_OPERAND_TYPE_REGISTER;
-          req.operands[i].reg.value = operand.reg.value;
-          break;
-        case ZYDIS_OPERAND_TYPE_MEMORY:
-          req.operands[i].type = ZYDIS_OPERAND_TYPE_MEMORY;
-          req.operands[i].mem.size = operand.size / 8;
-          req.operands[i].mem.base = operand.mem.base;
-          req.operands[i].mem.index = operand.mem.index;
-          req.operands[i].mem.scale = operand.mem.scale;
-          req.operands[i].mem.displacement = operand.mem.disp.value;
-          break;
-        case ZYDIS_OPERAND_TYPE_IMMEDIATE:
-          req.operands[i].type = ZYDIS_OPERAND_TYPE_IMMEDIATE;
-          if(inst.has_branch())
-          {
-            req.branch_width = ZYDIS_BRANCH_WIDTH_32;
-            inst.get_branch(ref_entry.label);
-            ref_entry.pc = pc;
-            ref_table.push_back(ref_entry);
-          }
-          else
-            req.operands[i].imm.u = operand.imm.value.u;
-          break;
-        default:
-          delete [] temp;
-          temp = nullptr;
-          return nullptr;
-      }
-    }
-
-    available_space = pc - init_size + bb.size() * 16;
-    ZyanStatus status = ZydisEncoderEncodeInstruction(&req, temp + pc - init_size, &available_space);
-    if(ZYAN_FAILED(status))
-    {
-      delete [] temp;
-      temp = nullptr;
-      return nullptr;
-    }
-
-    pc += available_space;
-  }
-
-  out_size = pc - init_size;
-  output = new uint8_t[pc - init_size];
-  ZeroMemory(output, pc - init_size);
-  memcpy(output, temp, pc - init_size);
-  delete [] temp;
-  temp = nullptr;
-
-  return output;
-}
-
-uint8_t* assemble(const bool bits, vector<BasicBlock>& bbs, uint64_t& size)
-{
-  ZydisDecodedInstruction z_inst;
-  ZydisDecoder decoder;
-  vector<uint64_t> sizes;
-  vector<uint8_t*> assembled_bbs;
-  vector<SymbolEntry> ref_table;
-  vector<SymbolEntry> symbol_table;
-  uint64_t bb_size;
-  uint64_t encoder_size = 0;
-  uint8_t* the_bb, *machine_code = nullptr;
-  ZydisEncoderRequest req;
-  int64_t pc = 0;
-  
-  ZeroMemory(&decoder, sizeof(decoder));
-	ZydisDecoderInit( &decoder, 
-                    bits ? ZYDIS_MACHINE_MODE_LONG_COMPAT_32 : ZYDIS_MACHINE_MODE_LONG_64,
-                    bits ? ZYDIS_STACK_WIDTH_32 : ZYDIS_STACK_WIDTH_64);
-  
-  //1st pass
-  for(BasicBlock bb : bbs)
-  {
-    the_bb = assemble_1st_pass(bits ? ZYDIS_MACHINE_MODE_LONG_COMPAT_32 : ZYDIS_MACHINE_MODE_LONG_64, symbol_table, ref_table, bb, bb_size, pc);
-    if(!the_bb)
-    {
-      for(uint8_t* machine_code : assembled_bbs)
-        delete [] machine_code;
-      return nullptr;
-    }
-    sizes.push_back(bb_size);
-    assembled_bbs.push_back(the_bb);
-  }
-
-  machine_code = new uint8_t[pc];
-  ZeroMemory(machine_code, pc);
-  pc = 0;
-
-  for(int i = 0; i < assembled_bbs.size(); i++)
-  {
-    memcpy(machine_code + pc, assembled_bbs[i], sizes[i]);
-    delete [] assembled_bbs[i];
-    pc += sizes[i];
-  }
-
-  sizes.clear();
-  assembled_bbs.clear();
-
-  //2nd pass
-  ZydisDecodedOperand operands[10];
-  
-  ZeroMemory(&req, sizeof(ZydisEncoderRequest));
-  req.machine_mode = bits ? ZYDIS_MACHINE_MODE_LONG_COMPAT_32 : ZYDIS_MACHINE_MODE_LONG_64;
-  req.operands[0].type = ZYDIS_OPERAND_TYPE_IMMEDIATE;
-  req.branch_width = ZYDIS_BRANCH_WIDTH_32;
-
-  for(SymbolEntry ref : ref_table)
-  {
-    for(SymbolEntry target : symbol_table)
-    {
-      if(target.label != ref.label)
-        continue;
-
-      if(ZYAN_FAILED(ZydisDecoderDecodeFull(
-                /* decoder:         */ &decoder,
-                /* buffer:          */ machine_code + ref.pc,
-                /* length:          */ pc - ref.pc,
-                /* instruction:     */ &z_inst,
-                /* operand:     	  */ operands
-      )))
-        return nullptr;
-
-      if (z_inst.operand_count_visible != 1 || operands[0].type != ZYDIS_OPERAND_TYPE_IMMEDIATE)
-        return nullptr;
-
-      encoder_size = z_inst.length;
-      req.mnemonic = z_inst.mnemonic;
-      req.operand_count = z_inst.operand_count_visible;
-      req.operands[0].imm.u = target.pc - (ref.pc + z_inst.length);
-
-      ZyanStatus status = ZydisEncoderEncodeInstruction(&req, machine_code + ref.pc, &encoder_size);
-      if(ZYAN_FAILED(status))
-        return nullptr;
-    }
-  }
-
-  size = (uint64_t)pc;
-  return machine_code;
-}
 
 void bubble_sort_vector(vector<BasicBlock>& bbs)
 {
@@ -275,21 +92,23 @@ int main(void)
   };
 
 	ZydisDecoder decoder;
+  Assembler x86_asm(0, ZYDIS_MACHINE_MODE_LONG_64);
 	vector<BasicBlock>program;
 	uint8_t* machine_code = nullptr;
 	uint64_t size = 0, temp = 0;
 
 	disassemble(decoder, program, disassembled, code, sizeof(code), 0, false, 0x00101139);
   bubble_sort_vector(program);
-  shuffle_bbs(program);
-  for(int i = 0; i < program.size(); i++)
-    mutate_ret_no_op(program[i]);
-  for(int i = 0; i < program.size(); i++)
-    mutate_mov(program[i]);
-  machine_code = assemble(false, program, size);
+
+  for(BasicBlock bb: program)
+    for(Instruction inst : bb.insts)
+      x86_asm.register_inst(&inst);
+    
+  machine_code = x86_asm.assemble(size);
+  
 
   ofstream myfile;
-  myfile.open ("thefile_patched.bin");
+  myfile.open ("new_assembler.bin");
   myfile.write((const char*)machine_code, size);
   myfile.close();
 

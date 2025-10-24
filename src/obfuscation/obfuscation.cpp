@@ -2,7 +2,7 @@
 //Github profile: https://github.com/xlatbx59
 #include <stdint.h>
 #include "../utils.hpp"
-#include "../code_analysis/basic_block.hpp"
+#include "../code_analysis/function.hpp"
 
 using std::swap;
 
@@ -47,3 +47,5 @@ void shuffle_bbs(vector<BasicBlock>& cfg)
     }
   }
 }
+
+//bool opaque_predicate()

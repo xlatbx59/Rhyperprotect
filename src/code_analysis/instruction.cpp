@@ -30,8 +30,8 @@ Instruction::Instruction( const ZydisDecodedInstruction* z_inst,
     case ZydisInstructionCategory::ZYDIS_CATEGORY_UNCOND_BR:
       if(operand[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE)
         this->branch = label + z_inst->length + operand[0].imm.value.u;
-      this->has_fall_m = false;
       this->has_branch_m = true;
+      this->has_fall_m = false;
       break;
     case ZydisInstructionCategory::ZYDIS_CATEGORY_CALL:
       this->has_branch_m = true;

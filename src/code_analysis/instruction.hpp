@@ -4,20 +4,36 @@
 #include <stdint.h>
 #include <Zydis/Zydis.h>
 
+enum BranchType : uint8_t
+{
+  Ret, CondBranch, UncondBranch, Fall
+};
+enum RefType : uint8_t
+{
+  NoRef, Rel, Absol
+};
+
+struct ImmRef
+{
+  RefType imm_type;
+  ZydisDecodedOperand operand;
+};
+
 class Instruction
 {
 public:
   uint64_t label;
 private:
   ZydisDecodedOperand operands[ZYDIS_MAX_OPERAND_COUNT_VISIBLE];
+  ImmRef imm_ref_type[ZYDIS_MAX_OPERAND_COUNT_VISIBLE];
   uint64_t branch;
   uint64_t fall;
   ZydisMnemonic mnemonic;
   uint8_t operand_num;
   bool has_fall_m;
   bool has_branch_m;
+  BranchType branch_type;
   ZydisMachineMode machine_mode;
-
 
 public:
   Instruction() {}
@@ -36,6 +52,8 @@ public:
   bool has_branch() const;
   ZydisMachineMode get_machine_mode() const noexcept;
   bool has_fall() const;
+  void imm(const ImmRef ref, const uint64_t value);
+  void reg(const ZydisRegister reg);
 };
 
 #define INST_NO_BRANCH(inst, mnemonic, label, operands, operand_num, machine_mode, fall) inst(mnemonic, label, operands, operand_num, machine_mode, 0, fall, false, true)
