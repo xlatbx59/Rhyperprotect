@@ -21,7 +21,6 @@ private:
   vector<Function> functions;
   ZydisMachineMode machine_mode;
   Assembler x86asm;
-//  elf_format elf_file;
 
 public:
   Obfuscator (const ZydisMachineMode machine_mode);

@@ -10,6 +10,6 @@ option(ZYDIS_BUILD_TOOLS "" OFF)
 option(ZYDIS_BUILD_EXAMPLES "" OFF)
 add_subdirectory("dep/zydis")
 
-add_executable(${PROJECT_NAME} "src/main.cpp" "src/code_analysis/instruction.cpp" "src/code_analysis/basic_block.cpp" "src/code_analysis/code_analysis.cpp" "src/obfuscation/obfuscation.cpp" "src/obfuscation/mutation.cpp" "src/code_analysis/function.cpp" "src/code_analysis/assembler.cpp")
+add_executable(${PROJECT_NAME} "src/main.cpp" "src/code_analysis/instruction.cpp" "src/code_analysis/basic_block.cpp" "src/code_analysis/code_analysis.cpp" "src/obfuscation/obfuscation.cpp" "src/obfuscation/mutation.cpp" "src/code_analysis/function.cpp" "src/code_analysis/assembler.cpp" "src/cryptography/cryptography.cpp")
 
 target_link_libraries(${PROJECT_NAME} PRIVATE "Zydis")

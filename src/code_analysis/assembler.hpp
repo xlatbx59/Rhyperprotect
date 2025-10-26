@@ -15,6 +15,7 @@ struct AsmLine
 {
   AsmLine(){}
   AsmDirective directive;
+  uint64_t label;
   union
   {
     Instruction inst;
@@ -43,14 +44,15 @@ private:
   std::vector<SymbolEntry>symbol_table;
   std::vector<SymbolEntry>ref_table;
   //std::vector<uint64_t> globals;  //global variables in the file
-  ZydisMachineMode machine_mode;
   uint8_t* assemble_1st_pass(uint64_t& size);
   bool assemble_2nd_pass(uint8_t* buffer, const uint64_t& size) const;
 
 public:
+  ZydisMachineMode machine_mode;
   Assembler(const uint64_t org, const ZydisMachineMode machine_mode);
   void collect_globals();
+  void reset();
   uint8_t* assemble(uint64_t& size);
-  bool register_inst(const Instruction* inst);
-  bool register_bytes(const uint64_t size, const uint8_t* bytes);
+  void register_inst(const Instruction* inst);
+  bool register_bytes_at(const uint64_t at, const uint64_t label, const uint64_t size, const uint8_t* bytes); //The parameter at is a label
 };

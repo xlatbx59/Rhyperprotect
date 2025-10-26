@@ -5,6 +5,7 @@
 #include <queue>
 #include <string.h>
 #include "code_analysis/code_analysis.hpp"
+#include "cryptography/cryptography.hpp"
 #include "obfuscation/obfuscation.hpp"
 
 #define ZeroMemory(dst, size) memset(dst, 0, size)
@@ -93,21 +94,10 @@ int main(void)
 
 	ZydisDecoder decoder;
   Assembler x86_asm(0, ZYDIS_MACHINE_MODE_LONG_64);
-  uint8_t arr[0x40]{ 0xC6, 0x05, 0x92, 0x32, 0x00, 0x00, 0x83 } ;
+  uint8_t arr[0x40]{ 0 } ;
 	vector<BasicBlock>program;
 	uint8_t* machine_code = nullptr;
 	uint64_t size = 0, temp = 0;
-  ZydisDecodedOperand operand[ZYDIS_MAX_OPERAND_COUNT_VISIBLE]{0};
-  ZydisDecodedInstruction z_inst;
-	ZydisDecoderInit( &decoder, ZYDIS_MACHINE_MODE_LONG_COMPAT_32, ZYDIS_STACK_WIDTH_32);
-  if(ZYAN_FAILED(ZydisDecoderDecodeFull(  //The function is good
-			/* decoder:         */ &decoder,
-			/* buffer:          */ arr,
-			/* length:          */ sizeof(arr),
-			/* instruction:     */ &z_inst,
-			/* operand:     	  */ operand
-		)))
-    return 1;
 
 	disassemble(decoder, program, disassembled, code, sizeof(code), 0, false, 0x00101139);
   bubble_sort_vector(program);
@@ -115,9 +105,14 @@ int main(void)
   for(BasicBlock bb: program)
     for(Instruction inst : bb.insts)
       x86_asm.register_inst(&inst);
+
+  uint8_t key[3] = {'K', 'e', 'y'};
+  uint8_t plain[9] = {'P', 'l', 'a', 'i', 'n', 't', 'e', 'x', 't'};
     
+  rc4(plain, sizeof(plain), key, sizeof(key));
+  for(int i = 0; i < 9; i++)
+    printf("%02x", plain[i]);
   machine_code = x86_asm.assemble(size);
-  
 
   ofstream myfile;
   myfile.open ("new_assembler.bin");

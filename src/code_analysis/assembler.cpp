@@ -9,9 +9,10 @@ Assembler::Assembler(const uint64_t org, const ZydisMachineMode machine_mode)
   this->machine_mode = machine_mode;
 }
 
-bool Assembler::register_bytes(const uint64_t size, const uint8_t* bytes)
+bool Assembler::register_bytes_at(const uint64_t at, const uint64_t label, const uint64_t size, const uint8_t* bytes)
 {
   AsmLine line;
+  bool flag = true;
 
   if(!size || !bytes)
     return false;
@@ -19,21 +20,45 @@ bool Assembler::register_bytes(const uint64_t size, const uint8_t* bytes)
   line.directive = ASM_DIRECTIVE_DB;
   line.db.bytes = bytes;
   line.db.size = size;
+  line.label;
 
-  this->listing.push_back(line);
-  return true;
+  for(int i = 0; i < this->listing.size(); i++)
+  {
+    if(this->listing[i].label == at)
+    {
+      this->listing.insert(this->listing.begin() + i + 1, line);
+      flag = true;
+      break;
+    }
+  }
+
+  if(flag)
+    return true;
+  return false;
 }
 
-bool Assembler::register_inst(const Instruction* inst)
+void Assembler::reset()
+{
+  for(int i = 0; i < this->listing.size(); i++)
+    if(this->listing[i].directive == ASM_DIRECTIVE_DB && this->listing[i].db.bytes)
+      delete [] this->listing[i].db.bytes;
+      
+  this->org = 0;
+  this->listing.clear();
+  this->ref_table.clear();
+  this->symbol_table.clear();
+}
+
+void Assembler::register_inst(const Instruction* inst)
 {
   AsmLine line;
 
   memset(&line, 0, sizeof(AsmLine));
   line.directive = ASM_DIRECTIVE_INST;
+  line.label = inst->label;
   memcpy(&line.inst, inst, sizeof(Instruction));
 
   this->listing.push_back(line);
-  return true;
 }
 
 uint8_t* Assembler::assemble_1st_pass(uint64_t& size)
@@ -55,17 +80,17 @@ uint8_t* Assembler::assemble_1st_pass(uint64_t& size)
   //The assembling
   for(AsmLine line : this->listing)
   {
+    SymbolEntry symbol_entry;
+    symbol_entry.lc = this->lc;
+    symbol_entry.label = line.label;
+
+    this->symbol_table.push_back(symbol_entry);
     if(line.directive == ASM_DIRECTIVE_DB)
     {
       memcpy(temp + this->lc, line.db.bytes, line.db.size);
       this->lc += line.db.size;
       continue;
     }
-
-    SymbolEntry symbol_entry;
-    symbol_entry.lc = this->lc;
-    symbol_entry.label = line.inst.label;
-    this->symbol_table.push_back(symbol_entry);
 
     memset(&req, 0, sizeof(ZydisEncoderRequest));
     req.machine_mode = this->machine_mode;
