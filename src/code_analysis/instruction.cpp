@@ -16,7 +16,8 @@ Instruction::Instruction(const ZydisMnemonic mnemonic, const uint64_t label, con
   this->has_branch_m = has_branch;
   this->has_fall_m = has_fall;
 }
-Instruction::Instruction( const ZydisDecodedInstruction* z_inst,
+Instruction::Instruction( const Refs* refs,
+                          const ZydisDecodedInstruction* z_inst,
                           const ZydisDecodedOperand* operand,
                           const uint64_t label)
 {
@@ -24,37 +25,35 @@ Instruction::Instruction( const ZydisDecodedInstruction* z_inst,
   switch (z_inst->meta.category)
   {
     case ZydisInstructionCategory::ZYDIS_CATEGORY_RET:
-      this->has_branch_m = false;
-      this->has_fall_m = false;
+      this->branch_type = BranchType::Ret;
       break;
     case ZydisInstructionCategory::ZYDIS_CATEGORY_UNCOND_BR:
       if(operand[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE)
         this->branch = label + z_inst->length + operand[0].imm.value.u;
-      this->has_branch_m = true;
-      this->has_fall_m = false;
+      this->branch_type = BranchType::UncondBranch;
       break;
     case ZydisInstructionCategory::ZYDIS_CATEGORY_CALL:
-      this->has_branch_m = true;
-      this->has_fall_m = true;
+      this->branch_type = BranchType::Call;
       if(operand[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE)
         this->branch = label + z_inst->length + operand[0].imm.value.u;
       break;
     case ZydisInstructionCategory::ZYDIS_CATEGORY_COND_BR:
-      this->has_branch_m = true;
-      this->has_fall_m = true;
+      this->branch_type = BranchType::CondBranch;
       this->branch = label + z_inst->length + operand[0].imm.value.u;
       this->fall = label + z_inst->length;
       break;
     default:
       this->fall = label + z_inst->length;
-      this->has_branch_m = false;
-      this->has_fall_m = true;
+      this->branch_type = BranchType::Fall;
   }
   this->mnemonic = z_inst->mnemonic;
   this->label = label;
   this->operand_num = z_inst->operand_count_visible;
 	for(int i = 0; i < z_inst->operand_count_visible; i++)
+  {
 		this->operands[i] = operand[i];
+		this->ref[i] = refs[i];
+  }
 }
 
 ZydisMnemonic Instruction::get_mnemonic() const noexcept
@@ -73,12 +72,20 @@ bool Instruction::get_operand(ZydisDecodedOperand& operand, const uint8_t index)
 	operand = this->operands[index];
 	return true;
 }
-bool Instruction::get_branch(uint64_t& branch) const noexcept
+BranchType Instruction::get_branch_type() const noexcept
 {
-  if(this->has_branch_m == false)
+  return this->branch_type;
+}
+RefType Instruction::get_ref_type(const uint8_t index) const noexcept
+{
+  return this->ref[index].type;
+}
+bool Instruction::get_ref(const uint8_t index, uint64_t& branch) const noexcept
+{
+  if(this->ref[index].type == NoRef)
     return false;
 
-  branch = this->branch;
+  branch = ref[index].ref;
   return true;
 }
 bool Instruction::get_fall(uint64_t& fall) const noexcept
@@ -112,14 +119,7 @@ bool Instruction::set_fall(uint64_t fall) noexcept
   this->fall = fall;
   return true;
 }
-bool Instruction::set_branch(uint64_t branch) noexcept
-{
-  if(!this->has_branch_m)
-    return false;
 
-  this->branch = branch;
-  return true;
-}
 
 ZydisMachineMode Instruction::get_machine_mode() const noexcept
 {

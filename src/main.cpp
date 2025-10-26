@@ -93,9 +93,21 @@ int main(void)
 
 	ZydisDecoder decoder;
   Assembler x86_asm(0, ZYDIS_MACHINE_MODE_LONG_64);
+  uint8_t arr[0x40]{ 0xC6, 0x05, 0x92, 0x32, 0x00, 0x00, 0x83 } ;
 	vector<BasicBlock>program;
 	uint8_t* machine_code = nullptr;
 	uint64_t size = 0, temp = 0;
+  ZydisDecodedOperand operand[ZYDIS_MAX_OPERAND_COUNT_VISIBLE]{0};
+  ZydisDecodedInstruction z_inst;
+	ZydisDecoderInit( &decoder, ZYDIS_MACHINE_MODE_LONG_COMPAT_32, ZYDIS_STACK_WIDTH_32);
+  if(ZYAN_FAILED(ZydisDecoderDecodeFull(  //The function is good
+			/* decoder:         */ &decoder,
+			/* buffer:          */ arr,
+			/* length:          */ sizeof(arr),
+			/* instruction:     */ &z_inst,
+			/* operand:     	  */ operand
+		)))
+    return 1;
 
 	disassemble(decoder, program, disassembled, code, sizeof(code), 0, false, 0x00101139);
   bubble_sort_vector(program);

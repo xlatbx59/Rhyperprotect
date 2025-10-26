@@ -15,9 +15,8 @@ public:
 	uint64_t fall_addr;
 	uint64_t branch_addr;
 	vector<Instruction> insts;
-	bool has_fall;
-	bool has_branch;
   ZydisMachineMode machine_mode;
+  BranchType branch_type;
 
 public:
 	Instruction operator[](uint32_t index) const noexcept;

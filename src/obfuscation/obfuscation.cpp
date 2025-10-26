@@ -6,8 +6,6 @@
 
 using std::swap;
 
-static void append_jmp();
-
 void shuffle_bbs(vector<BasicBlock>& cfg)
 {
   static uint64_t label = 0xb00b000000000000;
@@ -31,11 +29,11 @@ void shuffle_bbs(vector<BasicBlock>& cfg)
   //with no branches that fall to a new basic block have to jump now
   for(int i = 0; i < bb_num; i++)
   {
-    if( cfg[i].has_fall &&
+    if( cfg[i].branch_type == Fall || cfg[i].branch_type == CondBranch || cfg[i].branch_type == Call &&
         (i != cfg.size() - 1 && cfg[i].fall_addr != cfg[i + 1].bb_addr || i == cfg.size() - 1))
     {
       //Inserting jmps
-      if(!cfg[i].has_branch)
+      if(!cfg[i].branch_type == UncondBranch || !cfg[i].branch_type == CondBranch)
         cfg[i].set_branch(cfg[i].fall_addr);
       else
       {

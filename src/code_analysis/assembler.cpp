@@ -90,13 +90,14 @@ uint8_t* Assembler::assemble_1st_pass(uint64_t& size)
           break;
         case ZYDIS_OPERAND_TYPE_IMMEDIATE:
           req.operands[i].type = ZYDIS_OPERAND_TYPE_IMMEDIATE;
-          if(line.inst.has_branch())
+          if(line.inst.get_ref_type(i) == RefType::Rel)
           {
             SymbolEntry ref_entry;
             req.branch_width = ZYDIS_BRANCH_WIDTH_32;
-            line.inst.get_branch(ref_entry.label);
+            line.inst.get_ref(i, ref_entry.label);
             ref_entry.lc = this->lc;
             ref_table.push_back(ref_entry);
+            //printf("")
           }
           else
             req.operands[i].imm.u = operand.imm.value.u;
@@ -118,7 +119,6 @@ uint8_t* Assembler::assemble_1st_pass(uint64_t& size)
     this->lc += available_space;
   }
 
-
   machine_code = new uint8_t [lc];
   memcpy(machine_code, temp, this->lc);
   size = lc;
@@ -127,7 +127,7 @@ uint8_t* Assembler::assemble_1st_pass(uint64_t& size)
 }
 bool Assembler::assemble_2nd_pass(uint8_t* buffer, const uint64_t& size) const
 {
-  ZydisDecodedOperand operands[10];
+  ZydisDecodedOperand operands[ZYDIS_MAX_OPERAND_COUNT_VISIBLE];
   ZydisDecodedInstruction z_inst;
   uint64_t encoder_size = 0;
   ZydisEncoderRequest req;
@@ -136,12 +136,11 @@ bool Assembler::assemble_2nd_pass(uint8_t* buffer, const uint64_t& size) const
 
 	ZydisDecoderInit( &decoder, 
                     this->machine_mode,
-                    this->machine_mode == ZYDIS_MACHINE_MODE_LONG_COMPAT_32 ? ZYDIS_STACK_WIDTH_32 : ZYDIS_STACK_WIDTH_64);
+                    this->machine_mode == ZYDIS_MACHINE_MODE_LONG_COMPAT_32 ?
+                    ZYDIS_STACK_WIDTH_32 : ZYDIS_STACK_WIDTH_64);
 
   memset(&req, 0, sizeof(ZydisEncoderRequest));
   req.machine_mode = this->machine_mode;
-  req.operands[0].type = ZYDIS_OPERAND_TYPE_IMMEDIATE;
-  req.branch_width = ZYDIS_BRANCH_WIDTH_32;
 
   for(SymbolEntry ref : ref_table)
   {
@@ -166,6 +165,8 @@ bool Assembler::assemble_2nd_pass(uint8_t* buffer, const uint64_t& size) const
       req.mnemonic = z_inst.mnemonic;
       req.operand_count = z_inst.operand_count_visible;
       req.operands[0].imm.u = target.lc - (ref.lc + z_inst.length);
+      req.operands[0].type = ZYDIS_OPERAND_TYPE_IMMEDIATE;
+      req.branch_width = ZYDIS_BRANCH_WIDTH_32;
       printf("[*]Branch 0x%lx to %lx\r\n", ref.lc, ref.label);
 
       if(ZYAN_FAILED(ZydisEncoderEncodeInstruction(&req, buffer + ref.lc, &encoder_size)))

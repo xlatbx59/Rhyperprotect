@@ -6,17 +6,18 @@
 
 enum BranchType : uint8_t
 {
-  Ret, CondBranch, UncondBranch, Fall
+  Ret, CondBranch, UncondBranch, Fall,
+  Call
 };
 enum RefType : uint8_t
 {
   NoRef, Rel, Absol
 };
 
-struct ImmRef
+struct Refs
 {
-  RefType imm_type;
-  ZydisDecodedOperand operand;
+  RefType type;
+  uint64_t ref;
 };
 
 class Instruction
@@ -25,7 +26,7 @@ public:
   uint64_t label;
 private:
   ZydisDecodedOperand operands[ZYDIS_MAX_OPERAND_COUNT_VISIBLE];
-  ImmRef imm_ref_type[ZYDIS_MAX_OPERAND_COUNT_VISIBLE];
+  Refs ref[ZYDIS_MAX_OPERAND_COUNT_VISIBLE];
   uint64_t branch;
   uint64_t fall;
   ZydisMnemonic mnemonic;
@@ -38,21 +39,20 @@ private:
 public:
   Instruction() {}
   Instruction(const ZydisMnemonic mnemonic, const uint64_t label, const ZydisDecodedOperand* operands, const uint8_t op_num, ZydisMachineMode machine_mode, const uint64_t branch = 0, const uint64_t fall = 0, const bool has_branch = false, const bool has_fall = false);
-  Instruction(const ZydisDecodedInstruction* z_inst, const ZydisDecodedOperand* operand, const uint64_t address);
+  Instruction(const Refs* refs, const ZydisDecodedInstruction* z_inst, const ZydisDecodedOperand* operand, const uint64_t address);
   uint64_t get_address() const noexcept;
   ZydisMnemonic get_mnemonic() const noexcept;
   bool get_operand(ZydisDecodedOperand& operand, const uint8_t index) const noexcept;
   uint8_t get_operand_count() const noexcept;
-  ZydisInstructionCategory get_branch_type() const noexcept;
   bool set_fall(uint64_t fall) noexcept;
-  //bool prefix2attributes(ZydisInstructionAttributes& attributes)const noexcept;
   bool get_fall(uint64_t& fall) const noexcept;
-  bool set_branch(uint64_t branch) noexcept;
-  bool get_branch(uint64_t& branch) const noexcept;
+  BranchType get_branch_type() const noexcept;
   bool has_branch() const;
+  bool get_ref(const uint8_t index, uint64_t& ref)const noexcept;
+  RefType get_ref_type(const uint8_t index) const noexcept;
   ZydisMachineMode get_machine_mode() const noexcept;
   bool has_fall() const;
-  void imm(const ImmRef ref, const uint64_t value);
+  void imm(const RefType ref, const uint64_t value);
   void reg(const ZydisRegister reg);
 };
 

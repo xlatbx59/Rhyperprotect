@@ -4,5 +4,6 @@ src/file_formats
 src/obfuscation/ir.hpp
 src/obfuscation/vm
 src/cryptography
+img/zarbi*
 test
 test.cpp
