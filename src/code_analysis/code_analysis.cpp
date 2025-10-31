@@ -1,6 +1,6 @@
 //Author: xlatbx59
 //Github profile: https://github.com/xlatbx59
-#include "basic_block.hpp"
+#include "function.hpp"
 #include <queue>
 #include <string.h>
 
@@ -91,6 +91,7 @@ bool disassemble( ZydisDecoder& decoder,
         insts.clear();
         if(!next_branch(branches, lc))
         {
+          Function func(cfg);
           if(!next_call(calls, lc))
             return false;
         }

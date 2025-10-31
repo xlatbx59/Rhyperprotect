@@ -1,17 +1,21 @@
 //Author: xlatbx59
 //Github profile: https://github.com/xlatbx59
 #include <iostream>
+#include <stdint.h>
 #include <fstream>
 #include <queue>
 #include <string.h>
-#include "code_analysis/code_analysis.hpp"
-#include "cryptography/cryptography.hpp"
-#include "obfuscation/obfuscation.hpp"
+#include "file_formats/elf/ELFFormat.hpp"
+//#include "code_analysis/code_analysis.hpp"
+//#include "cryptography/cryptography.hpp"
+//#include "obfuscation/obfuscation.hpp"
 
 #define ZeroMemory(dst, size) memset(dst, 0, size)
 
 using std::ofstream;
+using std::ifstream;
 
+/*
 void bubble_sort_vector(vector<BasicBlock>& bbs)
 {
   bool flag = false;
@@ -28,10 +32,11 @@ void bubble_sort_vector(vector<BasicBlock>& bbs)
     }
   }while (flag);
 }
+*/
 
-int main(void)
+int main(int argc, char** argv)
 {
-  vector<ZyanU64> disassembled;
+  //vector<ZyanU64> disassembled;
 	const uint8_t code[] = {
     0x55, 0x48, 0x89, 0xe5, 0x48, 0x81, 0xec, 0x40, 0x01, 0x00, 0x00, 0x48, 0x89, 0xbd, 0xd8,
     0xfe, 0xff, 0xff, 0x89, 0xb5, 0xd4, 0xfe, 0xff, 0xff, 0x48, 0x89, 0x95, 0xc8, 0xfe, 0xff,
@@ -91,28 +96,49 @@ int main(void)
     0x8b, 0x45, 0xe8, 0x88, 0x10, 0x48, 0x8b, 0x45, 0xe0, 0x0f, 0xb6, 0x55, 0xff, 0x88, 0x10,
     0x90, 0x5d, 0xc3
   };
-
-	ZydisDecoder decoder;
-  Assembler x86_asm(0, ZYDIS_MACHINE_MODE_LONG_64);
   uint8_t arr[0x40]{ 0 } ;
-	vector<BasicBlock>program;
 	uint8_t* machine_code = nullptr;
+	uint8_t* file_content = nullptr;
 	uint64_t size = 0, temp = 0;
 
+  if(argc != 2)
+  {
+    std::cerr << "[-]Enter name of elf binary" << std::endl;
+    return 1;
+  }
+
+  ifstream bin(argv[1], std::ios::in | std::ios::binary | std::ios::ate);
+ if (bin.is_open())
+  {
+    printf("[+]File opened, reading from file...\r\n");
+    size = bin.tellg();
+    file_content = new uint8_t [size];
+    bin.seekg (0, std::ios::beg);
+    bin.read ((char* )file_content, size);
+    bin.close();
+  }
+ else
+ {
+    printf("[-]Couldn't open the file\r\n");
+    printf("[-]Exiting...\r\n");
+    return 1;
+  }
+
+ ElfFormat elf(file_content);
+
+  /*
+	ZydisDecoder decoder;
+  Assembler x86_asm(0, ZYDIS_MACHINE_MODE_LONG_64);
+	vector<BasicBlock>program;
 	disassemble(decoder, program, disassembled, code, sizeof(code), 0, false, 0x00101139);
   bubble_sort_vector(program);
 
   for(BasicBlock bb: program)
     for(Instruction inst : bb.insts)
       x86_asm.register_inst(&inst);
+      */
 
-  uint8_t key[3] = {'K', 'e', 'y'};
-  uint8_t plain[9] = {'P', 'l', 'a', 'i', 'n', 't', 'e', 'x', 't'};
-    
-  rc4(plain, sizeof(plain), key, sizeof(key));
-  for(int i = 0; i < 9; i++)
-    printf("%02x", plain[i]);
-  machine_code = x86_asm.assemble(size);
+  //machine_code = x86_asm.assemble(size);
 
   ofstream myfile;
   myfile.open ("new_assembler.bin");

@@ -7,7 +7,6 @@ BasicBlock new_bb(Instruction& inst)
 	BasicBlock bb;
 
 	bb.bb_addr = inst.get_address();
-	bb.last_addr = inst.get_address();
   bb.branch_type = inst.get_branch_type();
   bb.insts.push_back(inst);
   if(bb.branch_type == UncondBranch || bb.branch_type == CondBranch)
@@ -25,7 +24,6 @@ BasicBlock new_bb(vector<Instruction>& insts)
 	BasicBlock bb;
 	bb.insts = insts;
 	bb.bb_addr = insts[0].get_address();
-  bb.last_addr = insts[insts.size() - 1].get_address();
   if(bb.branch_type == UncondBranch || bb.branch_type == CondBranch)
     insts[insts.size() - 1].get_ref(0, bb.branch_addr);
   if(bb.branch_type == Fall || bb.branch_type == CondBranch || bb.branch_type == Call)
@@ -61,19 +59,4 @@ bool BasicBlock::split(uint64_t addr, BasicBlock& bb) noexcept
     }
   }
   return false;
-}
-
-bool BasicBlock::set_branch(uint64_t branch) noexcept
-{
-  static uint64_t label = 0xa550000000000000;
-  ZydisDecodedOperand operand;
-  operand.type = ZYDIS_OPERAND_TYPE_IMMEDIATE;
-
-  if(this->branch_type == UncondBranch || this->branch_type == CondBranch)
-    this->branch_addr = branch;
-
-  Instruction JMP_DIRECT(jmp, label++, &operand, this->fall_addr, this->machine_mode);
-  this->insts.push_back(jmp);
-
-  return true;
 }

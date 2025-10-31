@@ -67,87 +67,87 @@ uint8_t* Assembler::assemble_1st_pass(uint64_t& size)
   uint64_t temp_size = 0, available_space = 0;
   ZydisEncoderRequest req;
   ZydisDecodedOperand operand;
-
-  //Allocation for temporary machine code buffer
-  for(AsmLine line : this->listing)
-    if(line.directive != ASM_DIRECTIVE_DB)
-      temp_size += 16;
-    else
-      temp_size += line.db.size;
-  temp = new uint8_t[temp_size];
-  memset(temp, 0, temp_size);
-
-  //The assembling
-  for(AsmLine line : this->listing)
-  {
-    SymbolEntry symbol_entry;
-    symbol_entry.lc = this->lc;
-    symbol_entry.label = line.label;
-
-    this->symbol_table.push_back(symbol_entry);
-    if(line.directive == ASM_DIRECTIVE_DB)
-    {
-      memcpy(temp + this->lc, line.db.bytes, line.db.size);
-      this->lc += line.db.size;
-      continue;
-    }
-
-    memset(&req, 0, sizeof(ZydisEncoderRequest));
-    req.machine_mode = this->machine_mode;
-    req.mnemonic = line.inst.get_mnemonic();
-    req.operand_count = line.inst.get_operand_count();
-    for(int i = 0; i < req.operand_count; i++)
-    {
-      line.inst.get_operand(operand, i);
-      switch(operand.type)
-      {
-        case ZYDIS_OPERAND_TYPE_REGISTER:
-          req.operands[i].type = ZYDIS_OPERAND_TYPE_REGISTER;
-          req.operands[i].reg.value = operand.reg.value;
-          break;
-        case ZYDIS_OPERAND_TYPE_MEMORY:
-          req.operands[i].type = ZYDIS_OPERAND_TYPE_MEMORY;
-          req.operands[i].mem.size = operand.size / 8;
-          req.operands[i].mem.base = operand.mem.base;
-          req.operands[i].mem.index = operand.mem.index;
-          req.operands[i].mem.scale = operand.mem.scale;
-          req.operands[i].mem.displacement = operand.mem.disp.value;
-          break;
-        case ZYDIS_OPERAND_TYPE_IMMEDIATE:
-          req.operands[i].type = ZYDIS_OPERAND_TYPE_IMMEDIATE;
-          if(line.inst.get_ref_type(i) == RefType::Rel)
-          {
-            SymbolEntry ref_entry;
-            req.branch_width = ZYDIS_BRANCH_WIDTH_32;
-            line.inst.get_ref(i, ref_entry.label);
-            ref_entry.lc = this->lc;
-            ref_table.push_back(ref_entry);
-            //printf("")
-          }
-          else
-            req.operands[i].imm.u = operand.imm.value.u;
-          break;
-        default:
-          delete [] temp;
-          temp = nullptr;
-          return nullptr;
-      }
-    }
-    available_space = temp_size - this->lc;
-    ZyanStatus status = ZydisEncoderEncodeInstruction(&req, temp + this->lc, &available_space);
-    if(ZYAN_FAILED(status))
-    {
-      delete [] temp;
-      temp = nullptr;
-      return nullptr;
-    }
-    this->lc += available_space;
-  }
-
-  machine_code = new uint8_t [lc];
-  memcpy(machine_code, temp, this->lc);
-  size = lc;
-
+//
+//  //Allocation for temporary machine code buffer
+//  for(AsmLine line : this->listing)
+//    if(line.directive != ASM_DIRECTIVE_DB)
+//      temp_size += 16;
+//    else
+//      temp_size += line.db.size;
+//  temp = new uint8_t[temp_size];
+//  memset(temp, 0, temp_size);
+//
+//  //The assembling
+//  for(AsmLine line : this->listing)
+//  {
+//    SymbolEntry symbol_entry;
+//    symbol_entry.lc = this->lc;
+//    symbol_entry.label = line.label;
+//
+//    this->symbol_table.push_back(symbol_entry);
+//    if(line.directive == ASM_DIRECTIVE_DB)
+//    {
+//      memcpy(temp + this->lc, line.db.bytes, line.db.size);
+//      this->lc += line.db.size;
+//      continue;
+//    }
+//
+//    memset(&req, 0, sizeof(ZydisEncoderRequest));
+//    req.machine_mode = this->machine_mode;
+//    req.mnemonic = line.inst.get_mnemonic();
+//    req.operand_count = line.inst.get_operand_count();
+//    for(int i = 0; i < req.operand_count; i++)
+//    {
+//      line.inst.get_operand(operand, i);
+//      switch(operand.type)
+//      {
+//        case ZYDIS_OPERAND_TYPE_REGISTER:
+//          req.operands[i].type = ZYDIS_OPERAND_TYPE_REGISTER;
+//          req.operands[i].reg.value = operand.reg.value;
+//          break;
+//        case ZYDIS_OPERAND_TYPE_MEMORY:
+//          req.operands[i].type = ZYDIS_OPERAND_TYPE_MEMORY;
+//          req.operands[i].mem.size = operand.size / 8;
+//          req.operands[i].mem.base = operand.mem.base;
+//          req.operands[i].mem.index = operand.mem.index;
+//          req.operands[i].mem.scale = operand.mem.scale;
+//          req.operands[i].mem.displacement = operand.mem.disp.value;
+//          break;
+//        case ZYDIS_OPERAND_TYPE_IMMEDIATE:
+//          req.operands[i].type = ZYDIS_OPERAND_TYPE_IMMEDIATE;
+//          if(line.inst.get_ref_type(i) == RefType::Rel)
+//          {
+//            SymbolEntry ref_entry;
+//            req.branch_width = ZYDIS_BRANCH_WIDTH_32;
+//            line.inst.get_ref(i, ref_entry.label);
+//            ref_entry.lc = this->lc;
+//            ref_table.push_back(ref_entry);
+//            //printf("")
+//          }
+//          else
+//            req.operands[i].imm.u = operand.imm.value.u;
+//          break;
+//        default:
+//          delete [] temp;
+//          temp = nullptr;
+//          return nullptr;
+//      }
+//    }
+//    available_space = temp_size - this->lc;
+//    ZyanStatus status = ZydisEncoderEncodeInstruction(&req, temp + this->lc, &available_space);
+//    if(ZYAN_FAILED(status))
+//    {
+//      delete [] temp;
+//      temp = nullptr;
+//      return nullptr;
+//    }
+//    this->lc += available_space;
+//  }
+//
+//  machine_code = new uint8_t [lc];
+//  memcpy(machine_code, temp, this->lc);
+//  size = lc;
+//
   return machine_code;
 }
 bool Assembler::assemble_2nd_pass(uint8_t* buffer, const uint64_t& size) const

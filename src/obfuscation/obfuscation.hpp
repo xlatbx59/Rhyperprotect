@@ -4,7 +4,6 @@
 #include "../code_analysis/assembler.hpp"
 #include "../code_analysis/function.hpp"
 
-void shuffle_bbs(vector<BasicBlock>& cfg);
 bool mutate_ret_no_op(BasicBlock& bb);
 bool mutate_mov(BasicBlock& bb);
 
@@ -24,5 +23,8 @@ private:
 
 public:
   Obfuscator (const ZydisMachineMode machine_mode);
+  void shuffle_bbs(Function& function, Blob* blob);
+  bool mutate_jmp(BasicBlock& bb, Blob* blob);
+  void encryption(Function& function, Blob* blob);
   void obfuscate();
 };

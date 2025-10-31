@@ -84,3 +84,14 @@ bool mutate_mov(BasicBlock& bb)
 
   return true;
 }
+
+bool Obfuscator::mutate_jmp(BasicBlock& bb, Blob* blob)
+{
+  for(int i = 0; i < bb.size(); i++)
+  {
+    if(bb.insts[i].get_mnemonic() == ZYDIS_MNEMONIC_JMP)
+        Instruction JNZ_DIRECT(jnz, bb.insts[i].label, &operand, function.cfg[i].fall_addr, function.cfg[i].machine_mode);
+        Instruction JZ_DIRECT(jz, bb.insts[i].label, &operand, function.cfg[i].fall_addr, function.cfg[i].machine_mode);
+  }
+  return false;
+}

@@ -2,15 +2,19 @@
 //Github profile: https://github.com/xlatbx59
 #include "function.hpp"
 
-Function::Function(const std::vector<BasicBlock>& bbs)
+Function::Function(const std::vector<BasicBlock>& cfg)
 {
-  bool flag = true;
+  Blocks block();
+  bool flag = false;
   ZydisDecodedOperand operand;
-  this->bbs = bbs;
   this->label_var_allocator = nullptr;
 
-  for(BasicBlock bb: bbs)
+  block.type = BlockType::basic_block;
+  for(BasicBlock bb: cfg)
   {
+    block.bb = bb;
+    this->cfg.push_back(block);
+
     for(Instruction inst : bb.insts)
     {
       if(inst.get_mnemonic() == ZYDIS_MNEMONIC_PUSH)
@@ -42,11 +46,13 @@ Function::Function(const std::vector<BasicBlock>& bbs)
   }
 }
 
-Function::Function(const BasicBlock bb)
+Function::Function(BasicBlock bb)
 {
   ZydisDecodedOperand operand;
-  this->bbs.push_back(bb);
+  Blocks block();
+  this->cfg.push_back(bb);
   this->label_var_allocator = nullptr;
+  Block block = {BlockType::basic_block, bb};
 
   for(Instruction inst : bb.insts)
   {
@@ -73,4 +79,9 @@ Function::Function(const BasicBlock bb)
       break;
     }
   }
+}
+Function::~Function()
+{
+  if(label_var_allocator)
+    delete [] label_var_allocator;
 }
